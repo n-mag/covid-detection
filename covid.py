@@ -1,3 +1,6 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
 import numpy as np
 import pandas as pd
 from sklearn.utils import class_weight
@@ -15,11 +18,16 @@ import seaborn as sns
 # ========================
 # 1. Dataset Preparation
 # ========================
+"""
+Define the paths for the training, validation, and test datasets.
+Data augmentation techniques such as rescaling, rotation, width and height shifts,
+shear, zoom, and horizontal flip are applied to the training data.
+Validation and test data are only rescaled.
+"""
 train_dir = '/content/drive/MyDrive/projet_AI/DATA/train'
 val_dir = '/content/drive/MyDrive/projet_AI/DATA/val'
 test_dir = '/content/drive/MyDrive/projet_AI/DATA/test'
 
-# Data Augmentation
 datagen = ImageDataGenerator(
     rescale=1./255,
     rotation_range=15,
@@ -34,7 +42,10 @@ datagen = ImageDataGenerator(
 val_datagen = ImageDataGenerator(rescale=1./255)
 test_datagen = ImageDataGenerator(rescale=1./255)
 
-# Training Data Generator
+"""
+Generate batches of data from the directories using ImageDataGenerator.
+This will be used for training, validation, and testing.
+"""
 train_generator = datagen.flow_from_directory(
     train_dir,
     target_size=(227, 227),
@@ -42,15 +53,12 @@ train_generator = datagen.flow_from_directory(
     class_mode='binary'
 )
 
-# Validation Data Generator
 val_generator = val_datagen.flow_from_directory(
     val_dir,
     target_size=(227, 227),
     batch_size=32,
     class_mode='binary'
 )
-
-# Test Data Generator
 
 test_generator = test_datagen.flow_from_directory(
     test_dir,
@@ -63,7 +71,10 @@ test_generator = test_datagen.flow_from_directory(
 # ========================
 # 2. Model Architecture
 # ========================
-# Using VGG16 as a pre-trained model for transfer learning
+"""
+Define the model architecture. We use the VGG16 model pre-trained on ImageNet as the base.
+The top layer of VGG16 is removed, and we add custom layers on top for binary classification.
+"""
 base_model = VGG16(weights='imagenet', include_top=False, input_shape=(227, 227, 3))
 base_model.trainable = False  # Freeze the base model
 
@@ -72,10 +83,16 @@ model = Sequential([
     Flatten(),
     Dense(256, activation='relu'),
     Dropout(0.5),
-    Dense(1, activation='sigmoid')  # Binary classification
+    Dense(1, activation='sigmoid')  # Binary classification output
 ])
 
-# Learning Rate Scheduler
+# ========================
+# 3. Learning Rate Scheduler
+# ========================
+"""
+Define an exponential decay learning rate schedule to adjust the learning rate during training.
+This helps to optimize training by gradually reducing the learning rate.
+"""
 lr_schedule = ExponentialDecay(
     initial_learning_rate=0.001,
     decay_steps=1000,
@@ -85,12 +102,16 @@ lr_schedule = ExponentialDecay(
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
-# Compile the model
+# Compile the model with the Adam optimizer and binary cross-entropy loss.
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
 # ========================
-# 3. Callbacks
+# 4. Callbacks
 # ========================
+"""
+EarlyStopping is used to monitor the validation loss during training.
+Training stops early if the validation loss does not improve after a specified number of epochs.
+"""
 early_stopping = EarlyStopping(
     monitor='val_loss',
     patience=5,
@@ -98,16 +119,19 @@ early_stopping = EarlyStopping(
 )
 
 # ========================
-# 4. Training the Model
+# 5. Training the Model
 # ========================
-# Class Weights to Handle Imbalance
+"""
+Class weights are computed to handle class imbalance, ensuring that the model gives 
+appropriate attention to both classes during training.
+The model is trained using the specified class weights and early stopping.
+"""
 class_weights = class_weight.compute_class_weight(
     class_weight='balanced',
     classes=np.unique(train_generator.classes),
     y=train_generator.classes
 )
 
-# Train the model
 history = model.fit(
     train_generator,
     validation_data=val_generator,
@@ -119,19 +143,19 @@ history = model.fit(
 model.summary()
 
 # ========================
-# 5. Evaluating the Model
+# 6. Evaluating the Model
 # ========================
-# Evaluate on the test set
+"""
+Evaluate the model on the test set and print the test accuracy.
+Then, visualize the training and validation accuracy over epochs.
+"""
 test_loss, test_acc = model.evaluate(test_generator)
 print(f"Test Accuracy: {test_acc:.2f}")
 
-
-# Extracting data for visualization
 train_accuracy = history.history['accuracy']
 val_accuracy = history.history['val_accuracy']
 epochs_range = range(1, len(train_accuracy) + 1)
 
-# Plot the curves
 plt.figure(figsize=(8, 6))
 plt.plot(epochs_range, train_accuracy, label='Training Accuracy')
 plt.plot(epochs_range, val_accuracy, label='Validation Accuracy')
@@ -142,14 +166,16 @@ plt.legend()
 plt.grid(True)
 
 # ========================
-# 6. Curves & Visualizing
+# 7. Curves & Visualizing
 # ========================
-# Confusion Matrix
+"""
+Generate predictions on the test set and plot the confusion matrix.
+Also, plot the ROC curve to evaluate the model's performance.
+"""
 y_pred = model.predict(test_generator)
 y_pred_classes = (y_pred > 0.5).astype(int).flatten()
 y_true = test_generator.classes
 
-# Confusion Matrix Visualization
 cm = confusion_matrix(y_true, y_pred_classes)
 plt.figure(figsize=(6, 6))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Normal', 'COVID-19'], yticklabels=['Normal', 'COVID-19'])
@@ -158,16 +184,12 @@ plt.ylabel('True Labels')
 plt.title('Confusion Matrix')
 plt.show()
 
-# Classification Report
 print("\nClassification Report:")
 print(classification_report(y_true, y_pred_classes))
 
-
-# Compute ROC Curve
 fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 roc_auc = auc(fpr, tpr)
 
-# Plot ROC Curve
 plt.figure(figsize=(8, 6))
 plt.plot(fpr, tpr, label=f"ROC Curve (AUC = {roc_auc:.2f})", color='blue')
 plt.plot([0, 1], [0, 1], 'r--', label='Random Classifier')
@@ -179,15 +201,17 @@ plt.grid(True)
 plt.show()
 
 # ========================
-# 7. Predicting on New Image
+# 8. Predicting on New Image
 # ========================
+"""
+This section loads a new image from the test set, preprocesses it,
+and makes a prediction using the trained model.
+"""
 from tensorflow.keras.preprocessing import image
 import matplotlib.pyplot as plt
 
-# Example image path
 img_path = '/content/drive/MyDrive/projet_AI/DATA/test/normal/Normal-1383.png'
 
-# Load and preprocess the image
 img = image.load_img(img_path, target_size=(227, 227))
 plt.imshow(img)
 plt.show()
@@ -195,7 +219,6 @@ plt.show()
 img_array = image.img_to_array(img)
 img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-# Predict
 score = model.predict(img_array)
 prediction = 'COVID' if score < 0.5 else 'Normal'
 print(f"Predicted: {prediction}, Score: {score[0][0]:.4f}")
