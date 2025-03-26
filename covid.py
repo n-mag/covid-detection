@@ -71,10 +71,7 @@ test_generator = test_datagen.flow_from_directory(
 # ========================
 # 2. Model Architecture
 # ========================
-"""
-Define the model architecture. We use the VGG16 model pre-trained on ImageNet as the base.
-The top layer of VGG16 is removed, and we add custom layers on top for binary classification.
-"""
+
 base_model = VGG16(weights='imagenet', include_top=False, input_shape=(227, 227, 3))
 base_model.trainable = False  # Freeze the base model
 
@@ -86,9 +83,7 @@ model = Sequential([
     Dense(1, activation='sigmoid')  # Binary classification output
 ])
 
-# ========================
-# 3. Learning Rate Scheduler
-# ========================
+
 """
 Define an exponential decay learning rate schedule to adjust the learning rate during training.
 This helps to optimize training by gradually reducing the learning rate.
@@ -105,13 +100,7 @@ optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 # Compile the model with the Adam optimizer and binary cross-entropy loss.
 model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
 
-# ========================
-# 4. Callbacks
-# ========================
-"""
-EarlyStopping is used to monitor the validation loss during training.
-Training stops early if the validation loss does not improve after a specified number of epochs.
-"""
+
 early_stopping = EarlyStopping(
     monitor='val_loss',
     patience=5,
