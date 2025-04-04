@@ -70,12 +70,7 @@ def prepare_data(train_dir, val_dir, test_dir):
 # ========================
 
 def build_model():
-    """
-    Builds and compiles a CNN model based on VGG16.
-
-    Returns:
-        keras.Model: Compiled CNN model.
-    """
+   
     base_model = VGG16(weights='imagenet', include_top=False, input_shape=(227, 227, 3))
     base_model.trainable = False  # Freeze the base model
 
@@ -216,16 +211,7 @@ def visualize_performance(model, test_generator):
 # 8. Predicting on New Image
 # ========================
 def predict_image(model, img_path):
-    """
-    Predicts the class of a given image using the trained model.
-
-    Args:
-        model (keras.Model): Trained CNN model.
-        img_path (str): Path to the image file.
-
-    Returns:
-        str: Predicted class label.
-    """
+    
     from tensorflow.keras.preprocessing import image
 
     img = image.load_img(img_path, target_size=(227, 227))
